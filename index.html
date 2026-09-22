@@ -29,11 +29,18 @@
 <!-- login -->
 <div id="login" class="login-wrap" hidden>
   <form id="login-form" class="login-card">
-    <div class="brand"><span class="dot"></span><span>Command Center</span></div>
-    <p class="muted">Enter your passcode to unlock your dashboard. Your data lives on Cloudflare, so the same data opens on every device.</p>
-    <input type="password" name="passcode" placeholder="Passcode" autocomplete="current-password" required>
+    <div class="login-head">
+      <div class="logo-sq">F</div>
+      <span class="brand-pill"><span class="brand-dot"></span>COMMAND CENTER</span>
+    </div>
+    <h2 class="login-title">Command Center</h2>
+    <p class="login-sub">Your dashboard — synced on every device.</p>
+    <label class="field">
+      <span>Passcode</span>
+      <input type="password" name="passcode" placeholder="Enter your passcode" autocomplete="current-password" required>
+    </label>
     <p id="login-error" class="error" hidden></p>
-    <button class="btn primary" type="submit">Unlock</button>
+    <button class="login-submit" type="submit">Unlock</button>
   </form>
 </div>
 

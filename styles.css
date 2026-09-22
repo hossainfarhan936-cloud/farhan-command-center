@@ -57,7 +57,7 @@ main{padding:1rem;max-width:1180px;margin:0 auto}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.6rem}
 
 /* inputs & buttons */
-input[type=text],input[type=date],input[type=number],textarea,select{
+input[type=text],input[type=date],input[type=number],input[type=password],textarea,select{
   background:var(--panel-2);border:1px solid var(--line);color:var(--txt);
   padding:.5rem .6rem;border-radius:9px;font:inherit;outline:none;width:100%;
 }
@@ -114,14 +114,43 @@ li.done .txt{text-decoration:line-through;color:var(--muted)}
 .error{color:#ff9aa9;font-size:.85rem;margin:0}
 #passcode-form label{display:block;margin-bottom:.35rem}
 
-/* login */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
-.login-card{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:1.4rem;max-width:420px;width:100%;display:flex;flex-direction:column;gap:.7rem;
+/* login — light card, styled after the GrabZone admin panel */
+.login-wrap{
+  position:fixed;inset:0;background:#f2f3f5;z-index:80;
+  display:flex;align-items:center;justify-content:center;padding:1.25rem;
 }
-.login-card .brand{font-size:1.05rem;margin-bottom:.2rem}
-.login-card .btn{margin-top:.2rem}
+.login-card{
+  background:#fff;border-radius:18px;color:#111827;
+  box-shadow:0 12px 32px rgba(15,23,42,.09), 0 1px 2px rgba(15,23,42,.05);
+  padding:1.75rem;width:100%;max-width:400px;display:flex;flex-direction:column;gap:.85rem;
+}
+.login-head{display:flex;align-items:center;gap:.6rem}
+.logo-sq{
+  width:44px;height:44px;border-radius:12px;background:#111827;color:#fff;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.15rem;
+}
+.brand-pill{
+  display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1px solid #e5e7eb;
+  border-radius:999px;padding:.3rem .7rem;font-size:.7rem;font-weight:600;letter-spacing:.09em;color:#374151;
+}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0}
+.login-title{font-size:1.4rem;font-weight:700;color:#111827;margin:.35rem 0 0}
+.login-sub{font-size:.9rem;color:#6b7280;margin:0 0 .4rem}
+.login-card .field{display:flex;flex-direction:column;gap:.35rem}
+.login-card .field > span{font-size:.78rem;font-weight:600;color:#374151}
+.login-card input[type=password]{
+  width:100%;height:46px;border:1px solid #d1d5db;border-radius:10px;background:#fff;
+  color:#111827;padding:0 .8rem;font-size:.95rem;outline:none;
+}
+.login-card input[type=password]::placeholder{color:#9ca3af}
+.login-card input[type=password]:focus{border-color:#111827;box-shadow:0 0 0 3px rgba(17,24,39,.09)}
+.login-submit{
+  width:100%;height:48px;border:0;border-radius:10px;background:#111827;color:#fff;
+  font:inherit;font-weight:600;font-size:.98rem;cursor:pointer;
+}
+.login-submit:hover{background:#1f2937}
+.login-submit:disabled{opacity:.65;cursor:default}
+.login-card .error{color:#dc2626;font-size:.84rem;margin:0}
 .modal-card hr + form label{display:block;margin-bottom:.35rem}
 
 a{color:var(--accent-2)}
