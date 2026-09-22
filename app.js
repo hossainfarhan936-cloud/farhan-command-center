@@ -1,7 +1,9 @@
-/* Content Center — personal dashboard. Vanilla JS, localStorage persistence.
-   Phase 1: all data client-side. Phase 2 will sync to a Cloudflare Worker + D1. */
+/* Content Center — personal dashboard.
+   Phase 2: state lives in Cloudflare D1 via the /api Pages Function (same origin).
+   localStorage is kept as an instant mirror + offline fallback so nothing is lost. */
 
 const STORE = 'cc_state_v1';
+const API = '/api';
 
 const TABS = [
   ['today', 'Today'],
@@ -65,27 +67,76 @@ function defaults() {
   };
 }
 
-let state = load();
-let tab = 'today';
-let query = '';
-
-function load() {
+function loadLocal() {
   try {
     const raw = localStorage.getItem(STORE);
     if (!raw) return defaults();
     const parsed = JSON.parse(raw);
     return Object.assign(defaults(), parsed, { meta: Object.assign(defaults().meta, parsed.meta || {}) });
   } catch (e) {
-    console.warn('load failed', e);
+    console.warn('local load failed', e);
     return defaults();
   }
 }
+
+let state = loadLocal();
+let tab = 'today';
+let query = '';
+let online = false;          // is the API reachable?
+let syncStatus = 'idle';     // idle | saving | saved | error | offline
+let lastSyncAt = null;
+
+function mirrorLocal() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); }
+  catch (e) { console.warn('mirror failed', e); }
+}
+
+function setSync(status, at) {
+  syncStatus = status;
+  if (at) lastSyncAt = at;
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  const map = { idle: '—', saving: 'saving…', saved: 'synced', error: 'sync error', offline: 'offline (local only)' };
+  el.textContent = map[status] || status;
+  el.className = 'pill' + (status === 'saved' ? ' accent' : status === 'error' || status === 'offline' ? ' warn' : '');
+  el.title = lastSyncAt ? 'Last saved ' + new Date(lastSyncAt).toLocaleString() : '';
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    ...opts,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* non-JSON */ }
+  return { ok: res.ok, status: res.status, data };
+}
+
 let saveTimer = null;
 function save() {
+  mirrorLocal();                       // always keep a local copy first
+  if (!online) { setSync('offline'); return; }
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { toast('Save failed: storage full?'); }
-  }, 120);
+  setSync('saving');
+  saveTimer = setTimeout(pushState, 500);
+}
+
+async function pushState() {
+  try {
+    const r = await api('/state', { method: 'PUT', body: JSON.stringify({ state }) });
+    if (r.ok) { setSync('saved', r.data && r.data.updatedAt); return; }
+    if (r.status === 401) { showLogin('Session expired — sign in again.'); return; }
+    setSync('error');
+  } catch (e) { online = false; setSync('offline'); }
+}
+
+async function pullState() {
+  const r = await api('/state');
+  if (r.status === 401) return { auth: false };
+  if (!r.ok) return { auth: true, offline: true };
+  return { auth: true, state: r.data.state, updatedAt: r.data.updatedAt };
 }
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -628,9 +679,101 @@ document.getElementById('file-import').addEventListener('change', (e) => {
   rd.readAsText(f);
 });
 document.getElementById('btn-wipe').addEventListener('click', () => {
-  if (confirm('Erase ALL dashboard data in this browser? This cannot be undone.')) {
+  if (confirm('Erase ALL dashboard data on the server AND this browser? This cannot be undone.')) {
     state = defaults(); save(); render(); modal.hidden = true; toast('Erased');
   }
 });
 
-render();
+/* ---------------- auth + boot ---------------- */
+function showLogin(msg) {
+  const el = document.getElementById('login');
+  el.hidden = false;
+  document.getElementById('app-shell').hidden = true;
+  const err = document.getElementById('login-error');
+  if (err) { err.textContent = msg || ''; err.hidden = !msg; }
+}
+
+function hideLogin() {
+  document.getElementById('login').hidden = true;
+  document.getElementById('app-shell').hidden = false;
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = e.target.elements.passcode;
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Checking…';
+  const r = await api('/login', { method: 'POST', body: JSON.stringify({ passcode: input.value }) });
+  btn.disabled = false;
+  btn.textContent = label;
+  if (r.ok) { input.value = ''; await boot(); return; }
+  showLogin((r.data && r.data.error) || 'Sign in failed — server unreachable.');
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  try { await api('/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
+  modal.hidden = true;
+  showLogin('Signed out.');
+});
+
+document.getElementById('passcode-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const r = await api('/passcode', { method: 'POST', body: JSON.stringify({ next: e.target.elements.next.value }) });
+  if (r.ok) { e.target.reset(); toast('Passcode changed'); }
+  else toast((r.data && r.data.error) || 'Could not change passcode');
+});
+
+document.getElementById('btn-sync').addEventListener('click', async () => {
+  setSync('saving');
+  await pushState();
+  const pulled = await pullState();
+  if (pulled.state) {
+    state = Object.assign(defaults(), pulled.state, { meta: Object.assign(defaults().meta, pulled.state.meta || {}) });
+    mirrorLocal(); render();
+    setSync('saved', pulled.updatedAt);
+    toast('Synced');
+  }
+});
+
+async function boot() {
+  let s;
+  try { s = await api('/session'); }
+  catch (e) { s = { ok: false }; }
+  if (!s.ok) {                              // API unreachable → local-only mode
+    online = false; hideLogin(); render(); setSync('offline');
+    toast('Server unreachable — working on this device only');
+    return;
+  }
+  online = true;
+  if (!s.data || !s.data.authenticated) {
+    showLogin(s.data && s.data.needsSetup ? 'No passcode is set on the server yet.' : '');
+    return;
+  }
+  const pulled = await pullState();
+  if (pulled.offline) { hideLogin(); render(); setSync('offline'); return; }
+  if (pulled.state) {
+    state = Object.assign(defaults(), pulled.state, { meta: Object.assign(defaults().meta, pulled.state.meta || {}) });
+    mirrorLocal();
+  } else {
+    await pushState();                      // first run: seed the server from local defaults
+  }
+  hideLogin();
+  render();
+  setSync('saved', pulled.updatedAt || new Date().toISOString());
+}
+
+/* pull remote changes when you come back to the tab (e.g. you edited on your phone) */
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !online) return;
+  if (syncStatus === 'saving') return;       // don't clobber unsaved local edits
+  const pulled = await pullState();
+  if (pulled.state && pulled.updatedAt && pulled.updatedAt !== lastSyncAt) {
+    state = Object.assign(defaults(), pulled.state, { meta: Object.assign(defaults().meta, pulled.state.meta || {}) });
+    mirrorLocal(); render(); setSync('saved', pulled.updatedAt);
+    toast('Updated from another device');
+  }
+});
+
+boot();

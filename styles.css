@@ -107,4 +107,19 @@ li.done .txt{text-decoration:line-through;color:var(--muted)}
 .modal{position:fixed;inset:0;background:rgba(3,7,15,.72);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:60}
 .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem;max-width:460px;width:100%}
 .modal .row label{margin-bottom:.2rem;display:block}
+.pill.warn{border-color:var(--warn);color:var(--warn)}
+.sep{border:0;border-top:1px solid var(--line);margin:.9rem 0}
+.error{color:#ff9aa9;font-size:.85rem;margin:0}
+#passcode-form label{display:block;margin-bottom:.35rem}
+
+/* login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.4rem;max-width:420px;width:100%;display:flex;flex-direction:column;gap:.7rem;
+}
+.login-card .brand{font-size:1.05rem;margin-bottom:.2rem}
+.login-card .btn{margin-top:.2rem}
+.modal-card hr + form label{display:block;margin-bottom:.35rem}
+
 a{color:var(--accent-2)}

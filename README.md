@@ -1,7 +1,7 @@
 # Farhan's Command Center
 
-Personal dashboard. Frontend only for now: a single static app (no build step) deployed to
-Cloudflare Pages, with data stored in the browser's localStorage.
+Personal dashboard: Cloudflare Pages frontend + Pages Functions API + D1 database.
+Data is stored on the server, so the same dashboard opens on every device behind a passcode.
 
 **Live:** https://farhan-command-center.pages.dev
 
@@ -14,25 +14,52 @@ Cloudflare Pages, with data stored in the browser's localStorage.
 - **Memory Vault** — searchable journal
 - **Learn** — books with key lessons + weird-knowledge facts, one of each per day
 - **Ideas** — idea inbox, send an idea to the content calendar or research queue
-- **Research** — queue topics; each gets a ready-to-send agent prompt (AI wiring in phase 2)
+- **Research** — queue topics; each gets a ready-to-send agent prompt
 - **Team** — contacts
 
-Search box at the top searches everything. ⚙ opens export/import/erase.
+The top search box searches every section. ⚙ holds export/import, sync now, rename, change passcode,
+sign out and erase.
 
-## Run locally
-Open `index.html` directly, or serve the folder:
+## Architecture
+- `index.html`, `styles.css`, `app.js` — frontend, no build step
+- `functions/api/[[path]].js` — same-origin API at `/api/*`, so no CORS and cookies just work
+- `schema.sql` — D1 tables: `app_state` (single JSON document) + `settings` (passcode hash, session secret)
+- `scripts/seed-passcode.js` — prints the SQL that seeds a passcode hash into D1
 
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/health` | GET | liveness |
+| `/api/session` | GET | `{ authenticated, needsSetup }` |
+| `/api/login` | POST | `{ passcode }` → sets the session cookie |
+| `/api/logout` | POST | clears the cookie |
+| `/api/state` | GET / PUT | read / save the dashboard document |
+| `/api/passcode` | POST | `{ next }` → rotates the passcode |
+
+**Auth:** the passcode is hashed with PBKDF2-SHA256 (100k iterations, random salt) in D1; the session is
+an HMAC-SHA256 signed cookie — HttpOnly, Secure, SameSite=Lax, 30 days. Failed logins are delayed 600 ms.
+The session secret is generated on first use and kept in `settings`.
+
+**Offline safety:** every change writes to localStorage immediately, then PUTs to the server (debounced
+500 ms). If the API is unreachable the dashboard keeps working locally and the top bar shows `offline`.
+Returning to the tab pulls changes made on another device.
+
+## Local development
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 8000     # static only — /api needs wrangler
+npx wrangler pages dev .        # full stack with a local D1
 ```
 
 ## Deploy
 ```bash
-CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... \
-  npx wrangler pages deploy . --project-name farhan-command-center --branch main
+export CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=...
+npx wrangler pages deploy . --project-name farhan-command-center --branch main
 ```
 
-## Phase 2 (planned)
-Data currently lives per-browser. Next: a Cloudflare Worker API + D1 database so the same
-data appears on every device, with login protecting it, plus AI-filled panels
-(daily ideas, newsletter insights, research answers).
+D1 database `command-center` is bound as `DB` on the Pages project for both production and preview.
+
+## Not in git
+The dashboard passcode is never committed — it is seeded straight into D1 and stored outside the repo.
+
+## Next (phase 3, planned)
+AI-filled panels: daily video/business ideas, newsletter digest from the agent mailbox, and research
+answers written into the Research tab instead of just queueing prompts.

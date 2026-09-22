@@ -4,43 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1120">
-<title>Content Center</title>
+<title>Command Center</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="dot"></span>
-    <span id="brand-name">Farhan's Command Center</span>
-  </div>
-  <div class="topbar-actions">
-    <input id="search" type="search" placeholder="Search everything…" autocomplete="off">
-    <button id="btn-settings" class="icon-btn" title="Data & backup">⚙</button>
-  </div>
-</header>
 
-<nav class="tabs" id="tabs"></nav>
+<div id="app-shell" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span id="brand-name">Farhan's Command Center</span>
+    </div>
+    <div class="topbar-actions">
+      <span id="sync-badge" class="pill" title="sync status">—</span>
+      <input id="search" type="search" placeholder="Search everything…" autocomplete="off">
+      <button id="btn-settings" class="icon-btn" title="Settings">⚙</button>
+    </div>
+  </header>
 
-<main id="view"></main>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="view"></main>
+</div>
+
+<!-- login -->
+<div id="login" class="login-wrap" hidden>
+  <form id="login-form" class="login-card">
+    <div class="brand"><span class="dot"></span><span>Command Center</span></div>
+    <p class="muted">Enter your passcode to unlock your dashboard. Your data lives on Cloudflare, so the same data opens on every device.</p>
+    <input type="password" name="passcode" placeholder="Passcode" autocomplete="current-password" required>
+    <p id="login-error" class="error" hidden></p>
+    <button class="btn primary" type="submit">Unlock</button>
+  </form>
+</div>
 
 <div id="toast" class="toast" hidden></div>
 
-<!-- Settings / backup modal -->
+<!-- Settings -->
 <div id="modal" class="modal" hidden>
   <div class="modal-card">
-    <h3>Data &amp; backup</h3>
-    <p class="muted">Your data is stored in this browser only (localStorage). Export regularly so you never lose it.</p>
+    <h3>Settings</h3>
+    <p class="muted">Synced to Cloudflare D1. localStorage keeps an offline mirror on this device.</p>
     <div class="row">
       <button id="btn-export" class="btn">⬇ Export JSON</button>
       <button id="btn-import" class="btn">⬆ Import JSON</button>
+      <button id="btn-sync" class="btn">⟳ Sync now</button>
       <input id="file-import" type="file" accept="application/json" hidden>
     </div>
     <div class="row">
       <label class="muted">Rename dashboard</label>
       <input id="set-title" type="text" placeholder="Farhan's Command Center">
     </div>
+    <hr class="sep">
+    <form id="passcode-form">
+      <label class="muted">Change passcode (min 8 characters)</label>
+      <input type="password" name="next" placeholder="New passcode" autocomplete="new-password" required>
+      <div class="row"><button class="btn" type="submit">Update passcode</button></div>
+    </form>
+    <hr class="sep">
     <div class="row right">
       <button id="btn-wipe" class="btn danger">Erase all data</button>
+      <button id="btn-logout" class="btn">Sign out</button>
       <button id="btn-close" class="btn primary">Done</button>
     </div>
   </div>
