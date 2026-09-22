@@ -86,6 +86,8 @@ let online = false;          // is the API reachable?
 let syncStatus = 'idle';     // idle | saving | saved | error | offline
 let lastSyncAt = null;
 let sessionEmail = '';       // login email reported by the server once authenticated
+let lastViewKey = '';        // tab+query of the previous render, to animate only real view changes
+let justToggled = null;      // id of the to-do just ticked, so its row can pop
 
 function mirrorLocal() {
   try { localStorage.setItem(STORE, JSON.stringify(state)); }
@@ -99,7 +101,8 @@ function setSync(status, at) {
   if (!el) return;
   const map = { idle: '—', saving: 'saving…', saved: 'synced', error: 'sync error', offline: 'offline (local only)' };
   el.textContent = map[status] || status;
-  el.className = 'pill' + (status === 'saved' ? ' accent' : status === 'error' || status === 'offline' ? ' warn' : '');
+  const cls = status === 'saved' ? ' accent' : (status === 'error' || status === 'offline') ? ' warn' : status === 'saving' ? ' pulsing' : '';
+  el.className = 'pill' + cls;
   el.title = lastSyncAt ? 'Last saved ' + new Date(lastSyncAt).toLocaleString() : '';
 }
 
@@ -187,14 +190,36 @@ function countFor(id) {
 
 function renderView() {
   const el = document.getElementById('view');
-  if (query) { el.innerHTML = searchView(); return; }
+  const key = tab + '|' + query;
+  const changed = key !== lastViewKey;
+  lastViewKey = key;
+  if (query) { el.innerHTML = searchView(); if (changed) animateIn(el); return; }
   const views = {
     today: viewToday, todo: viewTodo, content: viewContent, leads: viewLeads,
     clients: viewClients, vault: viewVault, learn: viewLearn,
     ideas: viewIdeas, research: viewResearch, team: viewTeam,
   };
   el.innerHTML = (views[tab] || viewToday)();
+  if (changed) animateIn(el);
 }
+
+/* staggered card entrance — restart by forcing a reflow so it replays on each view change */
+function animateIn(el) {
+  const first = el.firstElementChild;
+  if (!first) return;
+  first.classList.remove('anim-in');
+  void first.offsetWidth;
+  first.classList.add('anim-in');
+}
+
+/* play a row out before mutating state, so deletes do not just blink away */
+function animateOut(node, done) {
+  if (!node) { done(); return; }
+  node.classList.add('removing');
+  setTimeout(done, 190);
+}
+
+const rowOf = (node) => (node ? node.closest('li, .item, .kv') : null);
 
 /* ---------- Today ---------- */
 function viewToday() {
@@ -252,7 +277,8 @@ function viewToday() {
 /* ---------- To-do ---------- */
 function todoLi(t) {
   const overdue = t.due && !t.done && t.due < dayKey();
-  return `<li class="${t.done ? 'done' : ''}">
+  const pop = t.id === justToggled ? ' pop' : '';
+  return `<li class="${t.done ? 'done' : ''}${pop}">
     <input class="checkbox" type="checkbox" data-action="toggle-todo" data-id="${t.id}" ${t.done ? 'checked' : ''}>
     <span class="txt">${esc(t.text)}<small>${t.due ? (overdue ? '⚠ overdue ' : 'due ') + esc(t.due) : 'no due date'}${t.done && t.doneAt ? ' · done ' + esc(fmt(t.doneAt)) : ''}</small></span>
     <span class="actions"><button class="btn mini" data-action="del-todo" data-id="${t.id}">✕</button></span>
@@ -567,18 +593,31 @@ document.addEventListener('click', (e) => {
   if (action === 'toggle-todo') {
     const t = state.todos.find((x) => x.id === id);
     if (t) { t.done = !t.done; t.doneAt = t.done ? now() : null; }
+    justToggled = id;                       // row plays a small pop on re-render
   }
-  if (action === 'del-todo') state.todos = state.todos.filter((x) => x.id !== id);
-  if (action === 'clear-done') state.todos = state.todos.filter((x) => !x.done);
-  if (action === 'del-vault') state.vault = state.vault.filter((x) => x.id !== id);
-  if (action === 'del-content') state.content = state.content.filter((x) => x.id !== id);
-  if (action === 'del-lead') state.leads = state.leads.filter((x) => x.id !== id);
-  if (action === 'del-client') state.clients = state.clients.filter((x) => x.id !== id);
-  if (action === 'del-book') state.books = state.books.filter((x) => x.id !== id);
-  if (action === 'del-weird') state.weird = state.weird.filter((x) => x.id !== id);
-  if (action === 'del-idea') state.ideas = state.ideas.filter((x) => x.id !== id);
-  if (action === 'del-research') state.research = state.research.filter((x) => x.id !== id);
-  if (action === 'del-contact') state.contacts = state.contacts.filter((x) => x.id !== id);
+  /* deletes play the row out first, then mutate */
+  const delTodo = (key) => {
+    animateOut(rowOf(target), () => {
+      state[key] = state[key].filter((x) => x.id !== id);
+      save(); render();
+    });
+    return;
+  };
+  if (action === 'del-todo') return delTodo('todos');
+  if (action === 'del-vault') return delTodo('vault');
+  if (action === 'del-content') return delTodo('content');
+  if (action === 'del-lead') return delTodo('leads');
+  if (action === 'del-client') return delTodo('clients');
+  if (action === 'del-book') return delTodo('books');
+  if (action === 'del-weird') return delTodo('weird');
+  if (action === 'del-idea') return delTodo('ideas');
+  if (action === 'del-research') return delTodo('research');
+  if (action === 'del-contact') return delTodo('contacts');
+  if (action === 'clear-done') {
+    document.querySelectorAll('#view li.done').forEach((li) => li.classList.add('removing'));
+    setTimeout(() => { state.todos = state.todos.filter((x) => !x.done); save(); render(); }, 190);
+    return;
+  }
   if (action === 'toggle-client') {
     const c = state.clients.find((x) => x.id === id);
     if (c) c.status = c.status === 'Expired' ? 'Active' : 'Expired';
@@ -692,6 +731,14 @@ function showLogin(msg) {
   const el = document.getElementById('login');
   el.hidden = false;
   document.getElementById('app-shell').hidden = true;
+  const card = document.getElementById('login-form');
+  if (card) {
+    card.classList.remove('exit');
+    card.classList.remove('enter');
+    void card.offsetWidth;                 // restart the entrance animation
+    card.classList.add('enter');
+    if (msg) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); }
+  }
   const err = document.getElementById('login-error');
   if (err) { err.textContent = msg || ''; err.hidden = !msg; }
 }
@@ -717,7 +764,17 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   btn.textContent = label;
-  if (r.ok) { input.value = ''; await boot(); return; }
+  if (r.ok) {
+    const card = document.getElementById('login-form');
+    card.classList.remove('shake');
+    card.classList.add('exit');                 // card flies out before the dashboard appears
+    setTimeout(async () => {
+      card.classList.remove('exit', 'enter');
+      input.value = '';
+      await boot();
+    }, 250);
+    return;
+  }
   showLogin((r.data && r.data.error) || 'Sign in failed — server unreachable.');
 });
 

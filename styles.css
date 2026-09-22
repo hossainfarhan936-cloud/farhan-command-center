@@ -198,3 +198,68 @@ li.done .txt{text-decoration:line-through;color:var(--muted)}
 .card:hover{box-shadow:0 10px 26px rgba(0,0,0,.26)}
 
 a{color:var(--accent-2)}
+
+/* ---------------- motion layer ---------------- */
+@keyframes card-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.035)}100%{transform:scale(1)}}
+@keyframes strike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes remove-out{to{opacity:0;transform:translateX(16px) scale(.97);max-height:0;margin:0;padding-top:0;padding-bottom:0}}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes badge-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes shake{
+  10%,90%{transform:perspective(1200px) rotateX(1.6deg) translateX(-2px)}
+  20%,80%{transform:perspective(1200px) rotateX(1.6deg) translateX(3px)}
+  30%,50%,70%{transform:perspective(1200px) rotateX(1.6deg) translateX(-6px)}
+  40%,60%{transform:perspective(1200px) rotateX(1.6deg) translateX(6px)}
+}
+@keyframes card-enter{
+  from{opacity:0;transform:perspective(1200px) rotateX(9deg) translateY(20px) scale(.96)}
+  to{opacity:1;transform:perspective(1200px) rotateX(1.6deg) translateY(0) scale(1)}
+}
+@keyframes card-exit{to{opacity:0;transform:perspective(1200px) rotateX(-7deg) translateY(-18px) scale(.95)}}
+@keyframes dot-ping{0%{transform:scale(1);opacity:.75}70%,100%{transform:scale(2.6);opacity:0}}
+
+/* staggered entrance for dashboard cards, only when the view actually changes */
+.anim-in .card{animation:card-in .36s cubic-bezier(.2,.7,.3,1) both}
+.anim-in .card:nth-child(1){animation-delay:0s}
+.anim-in .card:nth-child(2){animation-delay:.045s}
+.anim-in .card:nth-child(3){animation-delay:.09s}
+.anim-in .card:nth-child(4){animation-delay:.135s}
+.anim-in .card:nth-child(5){animation-delay:.18s}
+.anim-in .card:nth-child(6){animation-delay:.225s}
+.anim-in .card:nth-child(7){animation-delay:.27s}
+.anim-in .card:nth-child(8){animation-delay:.315s}
+.anim-in .card:nth-child(9){animation-delay:.36s}
+
+/* to-do feedback */
+li.pop{animation:pop .3s ease}
+li.done .txt{position:relative}
+li.done .txt::after{
+  content:'';position:absolute;left:0;top:.62em;height:1.5px;width:100%;
+  background:currentColor;opacity:.8;transform-origin:left;animation:strike .22s ease-out both;
+}
+.removing{animation:remove-out .2s ease forwards;overflow:hidden;pointer-events:none}
+
+/* toast, badge, buttons, tabs, fields */
+.toast{animation:toast-in .22s ease}
+.pill.pulsing{animation:badge-pulse 1s ease-in-out infinite}
+.brand-dot{position:relative}
+.brand-dot::after{
+  content:'';position:absolute;inset:0;border-radius:50%;background:#f97316;
+  animation:dot-ping 2.4s ease-out infinite;
+}
+.btn,.icon-btn,.tab{transition:transform .12s ease,border-color .15s ease,background .15s ease,color .15s ease}
+.btn:active,.icon-btn:active,.tab:active{transform:scale(.96)}
+input,textarea,select{transition:border-color .15s ease,box-shadow .15s ease}
+
+/* login card states */
+.login-card.enter{animation:card-enter .45s cubic-bezier(.2,.7,.3,1) both, card-float 9s ease-in-out .5s infinite}
+.login-card.shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97) both}
+.login-card.exit{animation:card-exit .26s ease forwards;pointer-events:none}
+
+/* one switch for users who do not want motion */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;
+  }
+}

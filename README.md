@@ -60,6 +60,16 @@ D1 database `command-center` is bound as `DB` on the Pages project for both prod
 ## Not in git
 The dashboard passcode is never committed — it is seeded straight into D1 and stored outside the repo.
 
+## Motion
+3D and UI animation live in `scene.js` (Three.js scene, CDN module) and the `motion layer` block at the
+end of `styles.css`:
+- login: floating low-poly scene with pointer parallax, spinning CSS 3D logo cube, card entrance / shake on
+  a failed login / fly-out on success, pulsing badge dot
+- dashboard: staggered card entrance on a real view change only (tab or search), pointer-driven 3D card tilt,
+  animated strike-through and pop on ticking a to-do, rows animate out before a delete commits, pulsing sync badge
+- everything is disabled by one `prefers-reduced-motion` block, and the 3D scene degrades silently if the CDN
+  or WebGL is unavailable — the login never depends on it
+
 ## Next (phase 3, planned)
 AI-filled panels: daily video/business ideas, newsletter digest from the agent mailbox, and research
 answers written into the Research tab instead of just queueing prompts.
