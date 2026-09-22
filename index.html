@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>Content Center</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <span id="brand-name">Farhan's Command Center</span>
+  </div>
+  <div class="topbar-actions">
+    <input id="search" type="search" placeholder="Search everything…" autocomplete="off">
+    <button id="btn-settings" class="icon-btn" title="Data & backup">⚙</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<main id="view"></main>
+
+<div id="toast" class="toast" hidden></div>
+
+<!-- Settings / backup modal -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <h3>Data &amp; backup</h3>
+    <p class="muted">Your data is stored in this browser only (localStorage). Export regularly so you never lose it.</p>
+    <div class="row">
+      <button id="btn-export" class="btn">⬇ Export JSON</button>
+      <button id="btn-import" class="btn">⬆ Import JSON</button>
+      <input id="file-import" type="file" accept="application/json" hidden>
+    </div>
+    <div class="row">
+      <label class="muted">Rename dashboard</label>
+      <input id="set-title" type="text" placeholder="Farhan's Command Center">
+    </div>
+    <div class="row right">
+      <button id="btn-wipe" class="btn danger">Erase all data</button>
+      <button id="btn-close" class="btn primary">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
