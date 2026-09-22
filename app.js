@@ -88,6 +88,7 @@ let lastSyncAt = null;
 let sessionEmail = '';       // login email reported by the server once authenticated
 let lastViewKey = '';        // tab+query of the previous render, to animate only real view changes
 let justToggled = null;      // id of the to-do just ticked, so its row can pop
+let dailyContent = null;     // today's book lesson + weird fact from the daily job (D1)
 
 function mirrorLocal() {
   try { localStorage.setItem(STORE, JSON.stringify(state)); }
@@ -141,6 +142,14 @@ async function pullState() {
   if (r.status === 401) return { auth: false };
   if (!r.ok) return { auth: true, offline: true };
   return { auth: true, state: r.data.state, updatedAt: r.data.updatedAt };
+}
+
+/* today's book lesson + weird fact, written by the daily job */
+async function loadDaily() {
+  try {
+    const r = await api('/daily');
+    if (r.ok) dailyContent = r.data;
+  } catch (e) { /* keep the local rotation if the call fails */ }
 }
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -224,6 +233,12 @@ const rowOf = (node) => (node ? node.closest('li, .item, .kv') : null);
 /* ---------- Today ---------- */
 function viewToday() {
   const d = dailyPick();
+  const daily = (dailyContent && dailyContent.today) || null;
+  const dailyBook = daily ? {
+    day: daily.day, ord: daily.book_ord, title: daily.book_title,
+    author: daily.book_author, lesson: daily.book_lesson,
+  } : null;
+  const weirdText = (daily && daily.weird) || (d.weird ? d.weird.fact : null);
   const open = state.todos.filter((t) => !t.done);
   const dueToday = open.filter((t) => t.due && t.due === dayKey());
   const overdue = open.filter((t) => t.due && t.due < dayKey());
@@ -247,13 +262,15 @@ function viewToday() {
     </div>
 
     <div class="card">
-      <div class="card-head"><h3>📖 Book lesson of the day</h3><span class="pill">rotates daily</span></div>
-      ${d.book ? `<div class="kv">${esc(d.book.note || '')}<div class="src">${esc(d.book.title)} — ${esc(d.book.author || '')}</div></div>` : '<div class="empty">Add a book in Learn →</div>'}
+      <div class="card-head"><h3>📖 Book lesson of the day</h3><span class="pill${dailyBook ? ' accent' : ''}">${dailyBook ? 'day ' + esc(dailyBook.day) : 'rotates daily'}</span></div>
+      ${dailyBook
+        ? `<div class="kv">${esc(dailyBook.lesson || '')}<div class="src">${esc(dailyBook.title)} — ${esc(dailyBook.author || '')}${dailyBook.ord ? ` · book #${esc(dailyBook.ord)} of the rotation` : ''}</div></div>`
+        : (d.book ? `<div class="kv">${esc(d.book.note || '')}<div class="src">${esc(d.book.title)} — ${esc(d.book.author || '')}</div></div>` : '<div class="empty">Add a book in Learn →</div>')}
     </div>
 
     <div class="card">
-      <div class="card-head"><h3>🧠 Weird knowledge</h3><span class="pill">rotates daily</span></div>
-      ${d.weird ? `<div class="kv">${esc(d.weird.fact)}</div>` : '<div class="empty">Add a fact in Learn →</div>'}
+      <div class="card-head"><h3>🧠 Weird knowledge</h3><span class="pill${dailyBook ? ' accent' : ''}">${dailyBook ? 'day ' + esc(dailyBook.day) : 'rotates daily'}</span></div>
+      ${weirdText ? `<div class="kv">${esc(weirdText)}</div>` : '<div class="empty">Add a fact in Learn →</div>'}
     </div>
 
     <div class="card">
@@ -841,6 +858,7 @@ async function boot() {
   } else {
     await pushState();                      // first run: seed the server from local defaults
   }
+  await loadDaily();
   hideLogin();
   render();
   setSync('saved', pulled.updatedAt || new Date().toISOString());
@@ -850,11 +868,16 @@ async function boot() {
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !online) return;
   if (syncStatus === 'saving') return;       // don't clobber unsaved local edits
+  const dailyBefore = JSON.stringify(dailyContent);
+  await loadDaily();                         // a new day may have new content
+  const dailyChanged = JSON.stringify(dailyContent) !== dailyBefore;
   const pulled = await pullState();
   if (pulled.state && pulled.updatedAt && pulled.updatedAt !== lastSyncAt) {
     state = Object.assign(defaults(), pulled.state, { meta: Object.assign(defaults().meta, pulled.state.meta || {}) });
     mirrorLocal(); render(); setSync('saved', pulled.updatedAt);
     toast('Updated from another device');
+  } else if (dailyChanged) {
+    render();
   }
 });
 

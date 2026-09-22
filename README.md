@@ -60,6 +60,26 @@ D1 database `command-center` is bound as `DB` on the Pages project for both prod
 ## Not in git
 The dashboard passcode is never committed — it is seeded straight into D1 and stored outside the repo.
 
+## Daily content job
+`scripts/daily_update.py` writes one row per day into D1 `daily` for the Today cards:
+- **Book lesson** — the next book from `books` (99 seeded, read in order 1→99 then wraps), tracked by the
+  `book_cursor` setting; each book carries a one-line takeaway
+- **Weird knowledge** — generated fresh each day (OpenRouter `google/gemini-2.5-flash`), told not to repeat the
+  last 30 facts
+
+It is idempotent (a second run for the same day does nothing), refuses to write a row without a fact, and is wired
+to a Hermes cron job (`Command Center daily content`, `0 0 * * *` UTC = 06:00 Asia/Dhaka, no_agent, deliver=local)
+through the wrapper `~/.hermes/scripts/command-center-daily.py`.
+
+The dashboard reads it via `GET /api/daily` (auth required) and falls back to the local rotation in `Learn`
+if the row is missing. Manual runs:
+
+```bash
+python3 scripts/daily_update.py --dry-run     # show the day's pick without writing
+python3 scripts/daily_update.py --force       # rewrite today's row
+python3 scripts/books_to_sql.py data/books.json > /tmp/books.sql   # re-seed the book list
+```
+
 ## Motion
 3D and UI animation live in `scene.js` (Three.js scene, CDN module) and the `motion layer` block at the
 end of `styles.css`:
