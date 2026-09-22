@@ -710,12 +710,23 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   btn.textContent = 'Checking…';
   const r = await api('/login', {
     method: 'POST',
-    body: JSON.stringify({ email: e.target.elements.email.value, passcode: input.value }),
+    body: JSON.stringify({
+      email: e.target.elements.email.value.trim(),
+      passcode: input.value.trim(),
+    }),
   });
   btn.disabled = false;
   btn.textContent = label;
   if (r.ok) { input.value = ''; await boot(); return; }
   showLogin((r.data && r.data.error) || 'Sign in failed — server unreachable.');
+});
+
+/* show / hide the passcode so a typo is visible */
+document.getElementById('toggle-pass').addEventListener('click', (e) => {
+  const input = document.getElementById('login-form').elements.passcode;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  e.currentTarget.textContent = showing ? '👁' : '🙈';
 });
 
 document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -789,5 +800,43 @@ document.addEventListener('visibilitychange', async () => {
     toast('Updated from another device');
   }
 });
+
+/* 3D tilt on dashboard cards — pointer devices only, rAF-throttled */
+(() => {
+  const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (!fine) return;
+  const view = document.getElementById('view');
+  let raf = null, pending = null;
+
+  view.addEventListener('pointermove', (e) => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    pending = {
+      card,
+      px: (e.clientX - r.left) / r.width - 0.5,
+      py: (e.clientY - r.top) / r.height - 0.5,
+    };
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      if (!pending) return;
+      const { card: c, px, py } = pending;
+      c.style.transform = `perspective(1100px) rotateY(${(px * 6).toFixed(2)}deg) rotateX(${(-py * 6).toFixed(2)}deg) translateY(-3px)`;
+    });
+  });
+
+  view.addEventListener('pointerout', (e) => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    if (e.relatedTarget && card.contains(e.relatedTarget)) return;  // ignore child-to-child moves
+    card.style.transform = '';
+  });
+
+  const reset = () => document.querySelectorAll('.card').forEach((c) => { c.style.transform = ''; });
+  document.addEventListener('click', reset, true);
+  const search = document.getElementById('search');
+  if (search) search.addEventListener('input', reset);
+})();
 
 boot();

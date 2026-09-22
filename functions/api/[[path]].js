@@ -127,18 +127,22 @@ export async function onRequest(context) {
       const hash = await getSetting(env, 'passcode_hash');
       if (!salt || !hash) return json({ error: 'No passcode is set on this dashboard.', needsSetup: true }, 409);
       const expectedEmail = await getSetting(env, 'login_email');
+      const givenPass = String(passcode).trim();
       if (expectedEmail) {
         const given = String(email || '').trim().toLowerCase();
         if (given !== expectedEmail.trim().toLowerCase()) {
+          console.log('login-fail reason=email');
           await new Promise((r) => setTimeout(r, 600));
-          return json({ error: 'Wrong email or passcode.' }, 401);
+          return json({ error: 'That email does not match this dashboard.' }, 401);
         }
       }
-      const attempt = await pbkdf2Hex(passcode, salt);
+      const attempt = await pbkdf2Hex(givenPass, salt);
       if (attempt !== hash) {
+        console.log('login-fail reason=passcode len=' + givenPass.length);
         await new Promise((r) => setTimeout(r, 600)); // slow down guessing
-        return json({ error: 'Wrong email or passcode.' }, 401);
+        return json({ error: 'Wrong passcode (email was accepted).' }, 401);
       }
+      console.log('login-ok');
       const expiry = String(Date.now() + SESSION_MS);
       const token = `${expiry}.${await hmacHex(await sessionSecret(env), expiry)}`;
       return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token, Math.floor(SESSION_MS / 1000)) });
