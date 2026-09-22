@@ -5,6 +5,8 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+/* the hidden attribute must beat class display rules (.modal/.login-wrap use display:flex) */
+[hidden]{display:none !important}
 body{
   background:radial-gradient(1200px 600px at 15% -10%, #16304a 0%, var(--bg) 55%) no-repeat, var(--bg);
   color:var(--txt);
