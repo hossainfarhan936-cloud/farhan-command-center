@@ -178,12 +178,15 @@ export async function onRequest(context) {
     if (route === 'daily') {
       if (!(await isAuthed(request, env))) return json({ error: 'Not authenticated.' }, 401);
       if (method === 'GET') {
-        // the daily job writes on Asia/Dhaka dates (UTC+6)
-        const dhakaDay = new Date(Date.now() + 6 * 3600 * 1000).toISOString().slice(0, 10);
-        const row = await env.DB.prepare('SELECT * FROM daily WHERE day = ?').bind(dhakaDay).first();
-        if (row) return json({ today: row, requestedDay: dhakaDay });
+        // must match TIMEZONE in scripts/daily_update.py — en-CA formats as YYYY-MM-DD
+        const dayFmt = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+        });
+        const today = dayFmt.format(new Date());
+        const row = await env.DB.prepare('SELECT * FROM daily WHERE day = ?').bind(today).first();
+        if (row) return json({ today: row, requestedDay: today });
         const latest = await env.DB.prepare('SELECT * FROM daily ORDER BY day DESC LIMIT 1').first();
-        return json({ today: null, latest: latest || null, requestedDay: dhakaDay });
+        return json({ today: null, latest: latest || null, requestedDay: today });
       }
       return json({ error: 'Method not allowed.' }, 405);
     }

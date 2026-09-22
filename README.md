@@ -68,8 +68,11 @@ The dashboard passcode is never committed — it is seeded straight into D1 and 
   last 30 facts
 
 It is idempotent (a second run for the same day does nothing), refuses to write a row without a fact, and is wired
-to a Hermes cron job (`Command Center daily content`, `0 0 * * *` UTC = 06:00 Asia/Dhaka, no_agent, deliver=local)
+to a Hermes cron job (`Command Center daily content`, `0 11 * * *` UTC = 07:00 US Eastern, no_agent, deliver=local)
 through the wrapper `~/.hermes/scripts/command-center-daily.py`.
+
+**Time zone:** the job day is US Eastern — `TIMEZONE` in `scripts/daily_update.py` and the `timeZone` in the
+`/api/daily` handler must always match, or the dashboard will ask for a day the job never wrote.
 
 The dashboard reads it via `GET /api/daily` (auth required) and falls back to the local rotation in `Learn`
 if the row is missing. Manual runs:

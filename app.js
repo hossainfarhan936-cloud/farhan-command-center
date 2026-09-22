@@ -233,7 +233,9 @@ const rowOf = (node) => (node ? node.closest('li, .item, .kv') : null);
 /* ---------- Today ---------- */
 function viewToday() {
   const d = dailyPick();
-  const daily = (dailyContent && dailyContent.today) || null;
+  const dailyToday = (dailyContent && dailyContent.today) || null;
+  const daily = dailyToday || (dailyContent && dailyContent.latest) || null;
+  const isToday = !!dailyToday;
   const dailyBook = daily ? {
     day: daily.day, ord: daily.book_ord, title: daily.book_title,
     author: daily.book_author, lesson: daily.book_lesson,
@@ -262,7 +264,7 @@ function viewToday() {
     </div>
 
     <div class="card">
-      <div class="card-head"><h3>📖 Book lesson of the day</h3><span class="pill${dailyBook ? ' accent' : ''}">${dailyBook ? 'day ' + esc(dailyBook.day) : 'rotates daily'}</span></div>
+      <div class="card-head"><h3>📖 Book lesson of the day</h3><span class="pill${dailyBook ? ' accent' : ''}">${dailyBook ? 'day ' + esc(dailyBook.day) + (isToday ? '' : ' · latest') : 'rotates daily'}</span></div>
       ${dailyBook
         ? `<div class="kv">${esc(dailyBook.lesson || '')}<div class="src">${esc(dailyBook.title)} — ${esc(dailyBook.author || '')}${dailyBook.ord ? ` · book #${esc(dailyBook.ord)} of the rotation` : ''}</div></div>`
         : (d.book ? `<div class="kv">${esc(d.book.note || '')}<div class="src">${esc(d.book.title)} — ${esc(d.book.author || '')}</div></div>` : '<div class="empty">Add a book in Learn →</div>')}

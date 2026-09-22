@@ -16,11 +16,14 @@ import os
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 DB = "command-center"
 REPO = "/root/projects/command-center"
-DHAKA = timezone(timedelta(hours=6))
+# Which calendar day the content belongs to. Change this single line to move zones,
+# e.g. America/Chicago, America/Denver, America/Los_Angeles.
+TIMEZONE = "America/New_York"
 DRY = "--dry-run" in sys.argv
 FORCE = "--force" in sys.argv
 
@@ -81,7 +84,7 @@ def openrouter_fact(recent):
 
 
 def main():
-    today = datetime.now(DHAKA).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d")
 
     existing = wrangler(f"SELECT day, source FROM daily WHERE day = '{today}'", json_out=True)
     if existing and not FORCE and not DRY:
