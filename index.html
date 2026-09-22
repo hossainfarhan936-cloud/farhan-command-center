@@ -36,6 +36,10 @@
     <h2 class="login-title">Command Center</h2>
     <p class="login-sub">Your dashboard — synced on every device.</p>
     <label class="field">
+      <span>Email</span>
+      <input type="email" name="email" placeholder="you@example.com" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+    </label>
+    <label class="field">
       <span>Passcode</span>
       <input type="password" name="passcode" placeholder="Enter your passcode" autocomplete="current-password" required>
     </label>
@@ -62,6 +66,11 @@
       <input id="set-title" type="text" placeholder="Farhan's Command Center">
     </div>
     <hr class="sep">
+    <form id="email-form">
+      <label class="muted">Login email</label>
+      <input type="email" name="email" placeholder="you@example.com" autocapitalize="off" spellcheck="false" required>
+      <div class="row"><button class="btn" type="submit">Update email</button></div>
+    </form>
     <form id="passcode-form">
       <label class="muted">Change passcode (min 8 characters)</label>
       <input type="password" name="next" placeholder="New passcode" autocomplete="new-password" required>

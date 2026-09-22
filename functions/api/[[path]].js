@@ -114,19 +114,30 @@ export async function onRequest(context) {
 
     if (route === 'session' && method === 'GET') {
       const hash = await getSetting(env, 'passcode_hash');
-      return json({ authenticated: await isAuthed(request, env), needsSetup: !hash });
+      const authed = await isAuthed(request, env);
+      const out = { authenticated: authed, needsSetup: !hash };
+      if (authed) out.email = await getSetting(env, 'login_email');
+      return json(out);
     }
 
     if (route === 'login' && method === 'POST') {
-      const { passcode } = await body(request);
+      const { email, passcode } = await body(request);
       if (!passcode || typeof passcode !== 'string') return json({ error: 'Passcode required.' }, 400);
       const salt = await getSetting(env, 'passcode_salt');
       const hash = await getSetting(env, 'passcode_hash');
       if (!salt || !hash) return json({ error: 'No passcode is set on this dashboard.', needsSetup: true }, 409);
+      const expectedEmail = await getSetting(env, 'login_email');
+      if (expectedEmail) {
+        const given = String(email || '').trim().toLowerCase();
+        if (given !== expectedEmail.trim().toLowerCase()) {
+          await new Promise((r) => setTimeout(r, 600));
+          return json({ error: 'Wrong email or passcode.' }, 401);
+        }
+      }
       const attempt = await pbkdf2Hex(passcode, salt);
       if (attempt !== hash) {
         await new Promise((r) => setTimeout(r, 600)); // slow down guessing
-        return json({ error: 'Wrong passcode.' }, 401);
+        return json({ error: 'Wrong email or passcode.' }, 401);
       }
       const expiry = String(Date.now() + SESSION_MS);
       const token = `${expiry}.${await hmacHex(await sessionSecret(env), expiry)}`;
@@ -162,13 +173,21 @@ export async function onRequest(context) {
 
     if (route === 'passcode' && method === 'POST') {
       if (!(await isAuthed(request, env))) return json({ error: 'Not authenticated.' }, 401);
-      const { next } = await body(request);
-      if (!next || String(next).length < 8) return json({ error: 'New passcode must be at least 8 characters.' }, 400);
+      const { next, email } = await body(request);
+      if (email !== undefined) {
+        const trimmed = String(email).trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return json({ error: 'Enter a valid email address.' }, 400);
+        await setSetting(env, 'login_email', trimmed);
+      }
+      if (next === undefined || next === null || next === '') {
+        return json({ ok: true, email: await getSetting(env, 'login_email') });
+      }
+      if (String(next).length < 8) return json({ error: 'New passcode must be at least 8 characters.' }, 400);
       const saltBytes = crypto.getRandomValues(new Uint8Array(16));
       const salt = toHex(saltBytes);
       await setSetting(env, 'passcode_salt', salt);
       await setSetting(env, 'passcode_hash', await pbkdf2Hex(String(next), salt));
-      return json({ ok: true });
+      return json({ ok: true, email: await getSetting(env, 'login_email') });
     }
 
     return json({ error: 'Unknown route: /api/' + route }, 404);

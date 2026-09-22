@@ -85,6 +85,7 @@ let query = '';
 let online = false;          // is the API reachable?
 let syncStatus = 'idle';     // idle | saving | saved | error | offline
 let lastSyncAt = null;
+let sessionEmail = '';       // login email reported by the server once authenticated
 
 function mirrorLocal() {
   try { localStorage.setItem(STORE, JSON.stringify(state)); }
@@ -654,6 +655,8 @@ document.getElementById('search').addEventListener('input', (e) => {
 const modal = document.getElementById('modal');
 document.getElementById('btn-settings').addEventListener('click', () => {
   document.getElementById('set-title').value = state.meta.title || '';
+  const ef = document.getElementById('email-form');
+  if (ef && sessionEmail) ef.elements.email.value = sessionEmail;
   modal.hidden = false;
 });
 document.getElementById('btn-close').addEventListener('click', () => { modal.hidden = true; });
@@ -705,7 +708,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   const label = btn.textContent;
   btn.textContent = 'Checking…';
-  const r = await api('/login', { method: 'POST', body: JSON.stringify({ passcode: input.value }) });
+  const r = await api('/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: e.target.elements.email.value, passcode: input.value }),
+  });
   btn.disabled = false;
   btn.textContent = label;
   if (r.ok) { input.value = ''; await boot(); return; }
@@ -723,6 +729,13 @@ document.getElementById('passcode-form').addEventListener('submit', async (e) =>
   const r = await api('/passcode', { method: 'POST', body: JSON.stringify({ next: e.target.elements.next.value }) });
   if (r.ok) { e.target.reset(); toast('Passcode changed'); }
   else toast((r.data && r.data.error) || 'Could not change passcode');
+});
+
+document.getElementById('email-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const r = await api('/passcode', { method: 'POST', body: JSON.stringify({ email: e.target.elements.email.value }) });
+  if (r.ok) { toast('Login email updated'); }
+  else toast((r.data && r.data.error) || 'Could not update email');
 });
 
 document.getElementById('btn-sync').addEventListener('click', async () => {
@@ -747,6 +760,7 @@ async function boot() {
     return;
   }
   online = true;
+  sessionEmail = (s.data && s.data.email) || '';
   if (!s.data || !s.data.authenticated) {
     showLogin(s.data && s.data.needsSetup ? 'No passcode is set on the server yet.' : '');
     return;

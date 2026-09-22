@@ -138,12 +138,12 @@ li.done .txt{text-decoration:line-through;color:var(--muted)}
 .login-sub{font-size:.9rem;color:#6b7280;margin:0 0 .4rem}
 .login-card .field{display:flex;flex-direction:column;gap:.35rem}
 .login-card .field > span{font-size:.78rem;font-weight:600;color:#374151}
-.login-card input[type=password]{
+.login-card input{
   width:100%;height:46px;border:1px solid #d1d5db;border-radius:10px;background:#fff;
   color:#111827;padding:0 .8rem;font-size:.95rem;outline:none;
 }
-.login-card input[type=password]::placeholder{color:#9ca3af}
-.login-card input[type=password]:focus{border-color:#111827;box-shadow:0 0 0 3px rgba(17,24,39,.09)}
+.login-card input::placeholder{color:#9ca3af}
+.login-card input:focus{border-color:#111827;box-shadow:0 0 0 3px rgba(17,24,39,.09)}
 .login-submit{
   width:100%;height:48px;border:0;border-radius:10px;background:#111827;color:#fff;
   font:inherit;font-weight:600;font-size:.98rem;cursor:pointer;
